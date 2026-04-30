@@ -77,9 +77,21 @@ type LetterDropStyle = {
 
 type CharBody = Matter.Body & { char: string; dropStyle?: LetterDropStyle }
 
+const DEFAULT_CANVAS_BACKGROUND = '#f4f1ee'
+const DEFAULT_LETTER_COLOR = '#5271ff'
+
+/** Sand + blue — quick picks beside each color control. */
+const COLOR_PICKER_PRESETS = [DEFAULT_CANVAS_BACKGROUND, DEFAULT_LETTER_COLOR] as const
+
+function hexColorsEqual(a: string, b: string): boolean {
+  return (
+    /^#[0-9A-Fa-f]{6}$/i.test(a) && /^#[0-9A-Fa-f]{6}$/i.test(b) && a.toLowerCase() === b.toLowerCase()
+  )
+}
+
 const DEFAULT_DROP_STYLE: LetterDropStyle = {
   fontScale: 1,
-  color: '#2d2640',
+  color: DEFAULT_LETTER_COLOR,
   fontStack: LETTER_FONT_OPTIONS[0].stack,
 }
 
@@ -172,21 +184,27 @@ export function TypoFunnel() {
   const sizeRef = useRef({ w: 0, h: 0, dpr: 1 })
   const [text, setText] = useState('')
   const [letterSizeId, setLetterSizeId] = useState<string>(DEFAULT_LETTER_SIZE_ID)
-  const [letterColor, setLetterColor] = useState('#2d2640')
+  const [letterColor, setLetterColor] = useState(DEFAULT_LETTER_COLOR)
   const [letterFontId, setLetterFontId] = useState<string>(DEFAULT_LETTER_FONT_ID)
-  const [canvasBackgroundColor, setCanvasBackgroundColor] = useState('#ffffff')
+  const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(DEFAULT_CANVAS_BACKGROUND)
   const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const typingInputRef = useRef<HTMLTextAreaElement>(null)
+  /** `scrollHeight` of the textarea when empty at current width — stay at this until content needs more. */
+  const typingOneLineScrollRef = useRef<number | null>(null)
 
   const adjustTypingBarHeight = useCallback(() => {
     const el = typingInputRef.current
     if (!el) return
     el.style.height = 'auto'
     const sh = el.scrollHeight
-    const bounded = Math.min(Math.max(sh, TYPING_BAR_MIN_HEIGHT_PX), TYPING_BAR_MAX_HEIGHT_PX)
+    if (text.length === 0) {
+      typingOneLineScrollRef.current = sh
+    }
+    const oneLine = typingOneLineScrollRef.current ?? TYPING_BAR_MIN_HEIGHT_PX
+    const bounded = Math.min(Math.max(sh, oneLine), TYPING_BAR_MAX_HEIGHT_PX)
     el.style.height = `${bounded}px`
     el.style.overflowY = sh > TYPING_BAR_MAX_HEIGHT_PX ? 'auto' : 'hidden'
-  }, [])
+  }, [text])
 
   useEffect(() => {
     adjustTypingBarHeight()
@@ -203,7 +221,11 @@ export function TypoFunnel() {
 
   const canvasBgHex = /^#[0-9A-Fa-f]{6}$/i.test(canvasBackgroundColor)
     ? canvasBackgroundColor
-    : '#ffffff'
+    : DEFAULT_CANVAS_BACKGROUND
+
+  const letterColorHex = /^#[0-9A-Fa-f]{6}$/i.test(letterColor)
+    ? letterColor.toLowerCase()
+    : DEFAULT_LETTER_COLOR
 
   const spawnString = useCallback((raw: string, style: LetterDropStyle) => {
     const engine = engineRef.current
@@ -493,7 +515,7 @@ export function TypoFunnel() {
           </label>
         </header>
 
-        <div className="typo-funnel__sidebar-group">
+        <div className="typo-funnel__sidebar-scroll">
           <div
             className={`typo-funnel__bar${hasTyped ? ' typo-funnel__bar--active' : ''}`}
           >
@@ -520,41 +542,57 @@ export function TypoFunnel() {
             role="group"
             aria-labelledby="sidebar-customize"
           >
-            <div className="typo-funnel__appearance-row typo-funnel__appearance-row--bg">
-              <label className="typo-funnel__appearance-label" htmlFor="canvas-bg-color">
-                Background
-              </label>
+          <div className="typo-funnel__appearance-row typo-funnel__appearance-row--bg">
+            <label className="typo-funnel__appearance-label" htmlFor="canvas-bg-color">
+              Background
+            </label>
+            <div className="typo-funnel__color-field" title={canvasBgHex}>
               <input
                 id="canvas-bg-color"
                 className="typo-funnel__color-swatch"
                 type="color"
                 value={canvasBgHex}
                 onChange={(e) => setCanvasBackgroundColor(e.target.value)}
-                title="Canvas background"
+                title={canvasBgHex}
               />
-            </div>
-            <p className="typo-funnel__hint typo-funnel__hint--after-bg">
-              Background applies to the whole canvas; other customizations apply to the next line
-              you drop.
-            </p>
-            <div className="typo-funnel__appearance-row">
-              <label className="typo-funnel__appearance-label" htmlFor="letter-size">
-                Font size
-              </label>
-              <select
-                id="letter-size"
-                className="typo-funnel__appearance-select"
-                value={letterSizeId}
-                onChange={(e) => setLetterSizeId(e.target.value)}
-              >
-                {LETTER_SIZE_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </option>
+              <div className="typo-funnel__color-presets">
+                {COLOR_PICKER_PRESETS.map((hex) => (
+                  <button
+                    key={`canvas-preset-${hex}`}
+                    type="button"
+                    className="typo-funnel__color-preset"
+                    style={{ backgroundColor: hex }}
+                    title={hex}
+                    aria-label={`Set background to ${hex}`}
+                    aria-pressed={hexColorsEqual(canvasBgHex, hex)}
+                    onClick={() => setCanvasBackgroundColor(hex)}
+                  />
                 ))}
-              </select>
+              </div>
             </div>
-            <div className="typo-funnel__appearance-row">
+          </div>
+          <p className="typo-funnel__hint typo-funnel__hint--after-bg">
+            Background applies to the whole canvas; other customizations apply to the next line you
+            drop.
+          </p>
+          <div className="typo-funnel__appearance-row">
+            <label className="typo-funnel__appearance-label" htmlFor="letter-size">
+              Font size
+            </label>
+            <select
+              id="letter-size"
+              className="typo-funnel__appearance-select"
+              value={letterSizeId}
+              onChange={(e) => setLetterSizeId(e.target.value)}
+            >
+              {LETTER_SIZE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="typo-funnel__appearance-row">
             <label className="typo-funnel__appearance-label" htmlFor="letter-font">
               Next drop — font
             </label>
@@ -571,18 +609,34 @@ export function TypoFunnel() {
               ))}
             </select>
           </div>
-            <div className="typo-funnel__appearance-row typo-funnel__appearance-row--color">
+          <div className="typo-funnel__appearance-row typo-funnel__appearance-row--color">
             <label className="typo-funnel__appearance-label" htmlFor="letter-color">
               Next drop — color
             </label>
-            <input
-              id="letter-color"
-              className="typo-funnel__color-swatch"
-              type="color"
-              value={/^#[0-9A-Fa-f]{6}$/i.test(letterColor) ? letterColor : '#2d2640'}
-              onChange={(e) => setLetterColor(e.target.value)}
-              title="Letter color"
-            />
+            <div className="typo-funnel__color-field" title={letterColorHex}>
+              <input
+                id="letter-color"
+                className="typo-funnel__color-swatch"
+                type="color"
+                value={letterColorHex}
+                onChange={(e) => setLetterColor(e.target.value)}
+                title={letterColorHex}
+              />
+              <div className="typo-funnel__color-presets">
+                {COLOR_PICKER_PRESETS.map((hex) => (
+                  <button
+                    key={`letter-preset-${hex}`}
+                    type="button"
+                    className="typo-funnel__color-preset"
+                    style={{ backgroundColor: hex }}
+                    title={hex}
+                    aria-label={`Set letter color to ${hex}`}
+                    aria-pressed={hexColorsEqual(letterColorHex, hex)}
+                    onClick={() => setLetterColor(hex)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
           </div>
 
