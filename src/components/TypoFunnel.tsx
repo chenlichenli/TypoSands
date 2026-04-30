@@ -92,6 +92,10 @@ const DEFAULT_LETTER_SIZE_ID = LETTER_SIZE_OPTIONS[2].id
 const TYPING_BAR_MIN_HEIGHT_PX = 44
 const TYPING_BAR_MAX_HEIGHT_PX = 168
 
+const VISIT_COUNT_STORAGE_KEY = 'typosands_visit_count'
+/** Session guard so React Strict Mode / double effect does not double-count one load. */
+const VISIT_INCREMENT_SESSION_KEY = 'typosands_visit_incremented_v1'
+
 function letterScaleForSizeId(id: string): number {
   const found = LETTER_SIZE_OPTIONS.find((o) => o.id === id)
   return found?.scale ?? 1
@@ -227,6 +231,7 @@ export function TypoFunnel() {
   const [letterColor, setLetterColor] = useState(DEFAULT_LETTER_COLOR)
   const [letterFontId, setLetterFontId] = useState<string>(DEFAULT_LETTER_FONT_ID)
   const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(DEFAULT_CANVAS_BACKGROUND)
+  const [visitCount, setVisitCount] = useState<number | null>(null)
   const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const typingInputRef = useRef<HTMLTextAreaElement>(null)
   const canvasColorInputRef = useRef<HTMLInputElement>(null)
@@ -260,6 +265,23 @@ export function TypoFunnel() {
     ro.observe(bar)
     return () => ro.disconnect()
   }, [adjustTypingBarHeight])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VISIT_COUNT_STORAGE_KEY)
+      let prev = raw ? parseInt(raw, 10) : 0
+      if (!Number.isFinite(prev) || prev < 0) prev = 0
+
+      if (!sessionStorage.getItem(VISIT_INCREMENT_SESSION_KEY)) {
+        prev += 1
+        localStorage.setItem(VISIT_COUNT_STORAGE_KEY, String(prev))
+        sessionStorage.setItem(VISIT_INCREMENT_SESSION_KEY, '1')
+      }
+      setVisitCount(prev)
+    } catch {
+      setVisitCount(null)
+    }
+  }, [])
 
   const canvasBgHex = /^#[0-9A-Fa-f]{6}$/i.test(canvasBackgroundColor)
     ? canvasBackgroundColor
@@ -340,7 +362,6 @@ export function TypoFunnel() {
     const canvas = canvasRef.current
     if (!stage || !canvas) return
     const canvasEl = canvas
-    const stageEl = stage
 
     const engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.00105 } })
     engineRef.current = engine
@@ -413,14 +434,24 @@ export function TypoFunnel() {
       World.add(engine.world, statics)
     }
 
+    const mouse = Mouse.create(canvasEl)
+    mouse.pixelRatio = 1
+    canvasEl.setAttribute('data-pixel-ratio', '1')
+    mouseRef.current = mouse
+
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
-      // Size the simulation to the *canvas* element, not the outer column — otherwise
-      // the bitmap uses the full column height (incl. toolbar) while the canvas only
-      // sits below the input, so bodies render off the visible bitmap / layout breaks.
-      const rect = stageEl.getBoundingClientRect()
-      const w = Math.max(320, Math.floor(rect.width * dpr))
-      const h = Math.max(280, Math.floor(rect.height * dpr))
+      /* Matter.Mouse maps pointer → simulation using canvas.width ÷ canvas.clientWidth
+       * (see Matter._getRelativeMousePosition). Bitmap size must use the same CSS box
+       * as clientWidth/Height or mapping drifts and picking only works in one region. */
+      const cssW = canvasEl.clientWidth
+      const cssH = canvasEl.clientHeight
+      if (cssW < 2 || cssH < 2) {
+        raf = requestAnimationFrame(resize)
+        return
+      }
+      const w = Math.floor(cssW * dpr)
+      const h = Math.floor(cssH * dpr)
 
       const prev = sizeRef.current
       const scaleX = prev.w > 0 ? w / prev.w : 1
@@ -442,35 +473,28 @@ export function TypoFunnel() {
 
       sizeRef.current = { w, h, dpr }
       buildStatics(w, h, dpr)
+      /* Matter.Mouse maps CSS→buffer using canvas width/clientWidth; pixelRatio must stay 1 when
+       * width/height are already multiplied by dpr (see Matter._getRelativeMousePosition). */
+      mouse.pixelRatio = 1
     }
 
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(resize)
     })
-    ro.observe(stageEl)
+    ro.observe(canvasEl)
     resize()
     requestAnimationFrame(() => resize())
-
-    const mouse = Mouse.create(canvasEl)
-    mouse.pixelRatio = Math.min(window.devicePixelRatio || 1, 2.5)
-    mouseRef.current = mouse
 
     const mc = MouseConstraint.create(engine, {
       mouse,
       constraint: {
-        stiffness: 0.22,
-        damping: 0.08,
+        stiffness: 0.88,
+        damping: 0.045,
         render: { visible: false },
       },
     })
     World.add(engine.world, mc)
-
-    const onMouseDown = () => {
-      mouse.pixelRatio = Math.min(window.devicePixelRatio || 1, 2.5)
-    }
-    canvasEl.addEventListener('mousedown', onMouseDown)
-    canvasEl.addEventListener('touchstart', onMouseDown, { passive: true })
 
     const darkMq = window.matchMedia('(prefers-color-scheme: dark)')
 
@@ -516,8 +540,6 @@ export function TypoFunnel() {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
-      canvasEl.removeEventListener('mousedown', onMouseDown)
-      canvasEl.removeEventListener('touchstart', onMouseDown)
       Events.off(engine, 'afterUpdate', draw)
       World.clear(engine.world, false)
       Engine.clear(engine)
@@ -733,6 +755,13 @@ export function TypoFunnel() {
             Restart
           </button>
         </div>
+
+        <footer className="typo-funnel__visit-footer" aria-live="polite">
+          <span className="typo-funnel__visit-footer-label">Total visits</span>
+          <span className="typo-funnel__visit-footer-count">
+            {visitCount === null ? '—' : visitCount.toLocaleString()}
+          </span>
+        </footer>
       </aside>
 
       <div ref={stageRef} className="typo-funnel__stage">

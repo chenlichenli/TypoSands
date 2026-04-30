@@ -37,6 +37,35 @@
   }
 }
 
+.typo-funnel__visit-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 6px 0 0;
+  margin: 0;
+  text-align: left;
+  /* Match `.typo-funnel__hint--after-bg` / panel hint typography */
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: rgba(45, 40, 58, 0.78);
+}
+
+.typo-funnel__visit-footer-label {
+  font-weight: 500;
+  color: inherit;
+}
+
+.typo-funnel__visit-footer-count {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
 .typo-funnel__stage {
   flex: 1 1 auto;
   min-width: 0;
