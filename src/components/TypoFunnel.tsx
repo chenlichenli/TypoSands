@@ -111,7 +111,7 @@ type LetterDropStyle = {
 
 type CharBody = Matter.Body & { char: string; dropStyle?: LetterDropStyle }
 
-const DEFAULT_CANVAS_BACKGROUND = '#f4f1ee'
+const DEFAULT_CANVAS_BACKGROUND = '#ffffff'
 const DEFAULT_LETTER_COLOR = '#5271ff'
 
 /** Quick picks beside each color control (defaults + extended palette). */
@@ -231,6 +231,8 @@ export function TypoFunnel() {
   const [letterColor, setLetterColor] = useState(DEFAULT_LETTER_COLOR)
   const [letterFontId, setLetterFontId] = useState<string>(DEFAULT_LETTER_FONT_ID)
   const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(DEFAULT_CANVAS_BACKGROUND)
+  const canvasBackgroundColorRef = useRef(canvasBackgroundColor)
+  canvasBackgroundColorRef.current = canvasBackgroundColor
   const [visitCount, setVisitCount] = useState<number | null>(null)
   const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const typingInputRef = useRef<HTMLTextAreaElement>(null)
@@ -502,7 +504,11 @@ export function TypoFunnel() {
       const { w, h, dpr } = sizeRef.current
       if (w < 1 || h < 1) return
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.clearRect(0, 0, w, h)
+      const bgRaw = canvasBackgroundColorRef.current
+      const bgHex =
+        /^#[0-9A-Fa-f]{6}$/i.test(bgRaw) ? bgRaw : DEFAULT_CANVAS_BACKGROUND
+      ctx.fillStyle = bgHex
+      ctx.fillRect(0, 0, w, h)
 
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
