@@ -24,6 +24,36 @@ const LETTER_FONT_OPTIONS = [
     stack: '"JetBrains Mono", ui-monospace, monospace',
   },
   {
+    id: 'ibmPlexMono',
+    label: 'IBM Plex Mono',
+    stack: '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace',
+  },
+  {
+    id: 'lora',
+    label: 'Lora',
+    stack: 'Lora, Georgia, "Times New Roman", serif',
+  },
+  {
+    id: 'playfair',
+    label: 'Playfair Display',
+    stack: '"Playfair Display", Georgia, "Times New Roman", serif',
+  },
+  {
+    id: 'nunito',
+    label: 'Nunito',
+    stack: 'Nunito, system-ui, -apple-system, sans-serif',
+  },
+  {
+    id: 'workSans',
+    label: 'Work Sans',
+    stack: '"Work Sans", system-ui, -apple-system, sans-serif',
+  },
+  {
+    id: 'spaceGrotesk',
+    label: 'Space Grotesk',
+    stack: '"Space Grotesk", system-ui, -apple-system, sans-serif',
+  },
+  {
     id: 'system',
     label: 'System UI',
     stack: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -80,8 +110,18 @@ type CharBody = Matter.Body & { char: string; dropStyle?: LetterDropStyle }
 const DEFAULT_CANVAS_BACKGROUND = '#f4f1ee'
 const DEFAULT_LETTER_COLOR = '#5271ff'
 
-/** Sand + blue — quick picks beside each color control. */
-const COLOR_PICKER_PRESETS = [DEFAULT_CANVAS_BACKGROUND, DEFAULT_LETTER_COLOR] as const
+/** Quick picks beside each color control (defaults + extended palette). */
+const COLOR_PICKER_PRESETS = [
+  DEFAULT_CANVAS_BACKGROUND,
+  DEFAULT_LETTER_COLOR,
+  '#cd2726',
+  '#f2de35',
+  '#05a25f',
+  '#0c3e7d',
+  '#763a09',
+  '#fcf6f2',
+  '#98b8a9',
+] as const
 
 function hexColorsEqual(a: string, b: string): boolean {
   return (
@@ -189,6 +229,8 @@ export function TypoFunnel() {
   const [canvasBackgroundColor, setCanvasBackgroundColor] = useState(DEFAULT_CANVAS_BACKGROUND)
   const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const typingInputRef = useRef<HTMLTextAreaElement>(null)
+  const canvasColorInputRef = useRef<HTMLInputElement>(null)
+  const letterColorInputRef = useRef<HTMLInputElement>(null)
   /** `scrollHeight` of the textarea when empty at current width — stay at this until content needs more. */
   const typingOneLineScrollRef = useRef<number | null>(null)
 
@@ -226,6 +268,9 @@ export function TypoFunnel() {
   const letterColorHex = /^#[0-9A-Fa-f]{6}$/i.test(letterColor)
     ? letterColor.toLowerCase()
     : DEFAULT_LETTER_COLOR
+
+  const canvasColorIsPreset = COLOR_PICKER_PRESETS.some((h) => hexColorsEqual(canvasBgHex, h))
+  const letterColorIsPreset = COLOR_PICKER_PRESETS.some((h) => hexColorsEqual(letterColorHex, h))
 
   const spawnString = useCallback((raw: string, style: LetterDropStyle) => {
     const engine = engineRef.current
@@ -543,19 +588,39 @@ export function TypoFunnel() {
             aria-labelledby="sidebar-customize"
           >
           <div className="typo-funnel__appearance-row typo-funnel__appearance-row--bg">
-            <label className="typo-funnel__appearance-label" htmlFor="canvas-bg-color">
-              Background
-            </label>
-            <div className="typo-funnel__color-field" title={canvasBgHex}>
+            <div className="typo-funnel__appearance-row-head">
+              <label className="typo-funnel__appearance-label" htmlFor="canvas-bg-color">
+                Background
+              </label>
+              <span
+                className="typo-funnel__appearance-selected-swatch"
+                style={{ backgroundColor: canvasBgHex }}
+                title={canvasBgHex}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="typo-funnel__color-field">
               <input
+                ref={canvasColorInputRef}
                 id="canvas-bg-color"
-                className="typo-funnel__color-swatch"
+                className="typo-funnel__color-swatch typo-funnel__color-swatch--hidden"
                 type="color"
                 value={canvasBgHex}
                 onChange={(e) => setCanvasBackgroundColor(e.target.value)}
                 title={canvasBgHex}
+                tabIndex={-1}
               />
-              <div className="typo-funnel__color-presets">
+              <div className="typo-funnel__color-options">
+                <button
+                  type="button"
+                  className="typo-funnel__color-preset typo-funnel__color-preset--custom"
+                  aria-label="Customize canvas color"
+                  title="Pick any color"
+                  aria-pressed={!canvasColorIsPreset}
+                  onClick={() => canvasColorInputRef.current?.click()}
+                >
+                  <span className="typo-funnel__color-preset-rainbow" aria-hidden="true" />
+                </button>
                 {COLOR_PICKER_PRESETS.map((hex) => (
                   <button
                     key={`canvas-preset-${hex}`}
@@ -610,19 +675,39 @@ export function TypoFunnel() {
             </select>
           </div>
           <div className="typo-funnel__appearance-row typo-funnel__appearance-row--color">
-            <label className="typo-funnel__appearance-label" htmlFor="letter-color">
-              Next drop — color
-            </label>
-            <div className="typo-funnel__color-field" title={letterColorHex}>
+            <div className="typo-funnel__appearance-row-head">
+              <label className="typo-funnel__appearance-label" htmlFor="letter-color">
+                Next drop — color
+              </label>
+              <span
+                className="typo-funnel__appearance-selected-swatch"
+                style={{ backgroundColor: letterColorHex }}
+                title={letterColorHex}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="typo-funnel__color-field">
               <input
+                ref={letterColorInputRef}
                 id="letter-color"
-                className="typo-funnel__color-swatch"
+                className="typo-funnel__color-swatch typo-funnel__color-swatch--hidden"
                 type="color"
                 value={letterColorHex}
                 onChange={(e) => setLetterColor(e.target.value)}
                 title={letterColorHex}
+                tabIndex={-1}
               />
-              <div className="typo-funnel__color-presets">
+              <div className="typo-funnel__color-options">
+                <button
+                  type="button"
+                  className="typo-funnel__color-preset typo-funnel__color-preset--custom"
+                  aria-label="Customize letter color"
+                  title="Pick any color"
+                  aria-pressed={!letterColorIsPreset}
+                  onClick={() => letterColorInputRef.current?.click()}
+                >
+                  <span className="typo-funnel__color-preset-rainbow" aria-hidden="true" />
+                </button>
                 {COLOR_PICKER_PRESETS.map((hex) => (
                   <button
                     key={`letter-preset-${hex}`}

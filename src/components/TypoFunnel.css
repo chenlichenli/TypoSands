@@ -14,7 +14,7 @@
 
 .typo-funnel__sidebar {
   flex: 0 0 auto;
-  width: clamp(260px, 30vw, 360px);
+  width: clamp(220px, 24vw, 300px);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -24,15 +24,16 @@
   overflow: hidden;
   z-index: 2;
   font-family: 'DM Sans', system-ui, sans-serif;
-  background: #ffffff;
-  border-right: 1px solid #e6e6eb;
+  /* Match default canvas sand (#f4f1ee from TypoFunnel.tsx DEFAULT_CANVAS_BACKGROUND). */
+  background: #f4f1ee;
+  border-right: 1px solid #e0dcd6;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   .typo-funnel__sidebar {
-    background: #ffffff;
-    border-right-color: #d8d8df;
+    background: #f4f1ee;
+    border-right-color: #d5d0c9;
   }
 }
 
@@ -127,16 +128,17 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   color: rgba(38, 32, 52, 0.92);
-  background: #cfcfd6;
-  border: 1px solid #b8b8c2;
+  /* Same as default canvas / sidebar sand (#f4f1ee). */
+  background: #f4f1ee;
+  border: 1px solid #dcd6cf;
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .typo-funnel__restart:hover {
-  background: #c2c2ca;
-  border-color: #a8a8b4;
+  background: #e8e3dc;
+  border-color: #cec7be;
   color: rgba(24, 18, 38, 0.98);
 }
 
@@ -166,9 +168,9 @@
 
 .typo-funnel__appearance-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -185,9 +187,37 @@
   padding-bottom: 0;
 }
 
+.typo-funnel__appearance-row-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.typo-funnel__appearance-row-head .typo-funnel__appearance-label {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Live selection (preset or custom) — matches swatch + native picker result. */
+.typo-funnel__appearance-selected-swatch {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
 .typo-funnel__appearance-label {
   flex: 0 0 auto;
-  min-width: 4.5rem;
+  width: 100%;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -195,9 +225,9 @@
 }
 
 .typo-funnel__appearance-select {
-  flex: 1 1 140px;
-  min-width: 0;
+  width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
   padding: 8px 10px;
   font-family: inherit;
   font-size: 12px;
@@ -215,19 +245,58 @@
 }
 
 .typo-funnel__color-field {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   cursor: default;
 }
 
-.typo-funnel__color-presets {
+.typo-funnel__color-swatch--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+.typo-funnel__color-options {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+}
+
+.typo-funnel__color-preset--custom {
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.typo-funnel__color-preset-rainbow {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 5px;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    #ff5a5a,
+    #ffd43b,
+    #69db7c,
+    #4dabf7,
+    #b197fc,
+    #ff8cc8,
+    #ff5a5a
+  );
 }
 
 .typo-funnel__color-preset {
